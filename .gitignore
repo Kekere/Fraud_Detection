@@ -1,0 +1,5 @@
+# Local datasets
+data/*
+!data/.gitkeep
+models/*
+.venv/*
