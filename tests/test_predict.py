@@ -30,6 +30,25 @@ class FakeNormalModel:
         return np.array([[0.92, 0.08]])
 
 
+def test_load_artifacts_loads_model_and_metadata(monkeypatch) -> None:
+    fake_model = object()
+    fake_metadata = {"features": ["feature_a"]}
+
+    def fake_load(path):
+        if path == predict_module.MODEL_FILE:
+            return fake_model
+        if path == predict_module.METADATA_FILE:
+            return fake_metadata
+        raise AssertionError(f"Unexpected artifact path: {path}")
+
+    monkeypatch.setattr(predict_module.joblib, "load", fake_load)
+
+    model, metadata = predict_module.load_artifacts()
+
+    assert model is fake_model
+    assert metadata is fake_metadata
+
+
 @pytest.fixture
 def account_data() -> dict:
     return {
@@ -68,7 +87,10 @@ def test_predict_account_returns_expected_structure(
     monkeypatch.setattr(
         predict_module,
         "load_artifacts",
-        lambda: (FakeFraudModel(), {"features": expected_features}),
+        lambda: (
+            FakeFraudModel(),
+            {"features": expected_features, "decision_threshold": 0.4},
+        ),
     )
 
     result = predict_module.predict_account(account_data)
@@ -76,6 +98,8 @@ def test_predict_account_returns_expected_structure(
     assert isinstance(result, dict)
     assert "prediction" in result
     assert "risk_score" in result
+    assert "decision_threshold" in result
+    assert result["decision_threshold"] == pytest.approx(40.0)
 
 
 def test_predict_account_returns_fraud_prediction(
@@ -110,6 +134,27 @@ def test_predict_account_returns_normal_prediction(
 
     assert result["prediction"] == 0
     assert result["risk_score"] == pytest.approx(8.0)
+
+
+def test_predict_account_uses_custom_decision_threshold(
+    monkeypatch,
+    account_data: dict,
+    expected_features: list[str],
+) -> None:
+    monkeypatch.setattr(
+        predict_module,
+        "load_artifacts",
+        lambda: (
+            FakeNormalModel(),
+            {"features": expected_features, "decision_threshold": 0.05},
+        ),
+    )
+
+    result = predict_module.predict_account(account_data)
+
+    assert result["prediction"] == 1
+    assert result["risk_score"] == pytest.approx(8.0)
+    assert result["decision_threshold"] == pytest.approx(5.0)
 
 
 def test_predict_account_uses_metadata_feature_order(
@@ -178,5 +223,5 @@ def test_predict_account_raises_error_when_feature_is_missing(
     incomplete_data = account_data.copy()
     incomplete_data.pop("max_amount")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="max_amount"):
         predict_module.predict_account(incomplete_data)

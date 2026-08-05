@@ -2,7 +2,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.feature_engineering import build_account_features
+from src.feature_engineering import (
+    build_account_features,
+    build_future_target,
+    build_temporal_account_dataset,
+    split_temporal_windows,
+)
 
 
 @pytest.fixture
@@ -142,3 +147,68 @@ def test_single_transaction_account_has_zero_standard_deviation() -> None:
     assert account["std_amount"] == pytest.approx(0.0)
     assert account["avg_time_between_tx"] == pytest.approx(0.0)
     assert not np.isnan(account["std_amount"])
+
+
+@pytest.fixture
+def temporal_transactions_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "TX_ID": range(1, 9),
+            "SENDER_ACCOUNT_ID": [1, 1, 2, 2, 1, 2, 1, 2],
+            "RECEIVER_ACCOUNT_ID": [2, 3, 1, 3, 2, 1, 3, 3],
+            "TX_TYPE": ["TRANSFER"] * 8,
+            "TX_AMOUNT": [10, 20, 15, 25, 30, 35, 40, 45],
+            "TIMESTAMP": [0, 1, 0, 1, 2, 2, 3, 3],
+            "IS_FRAUD": [0, 0, 0, 0, 0, 0, 1, 0],
+        }
+    )
+
+
+def test_temporal_windows_do_not_overlap(
+    temporal_transactions_df: pd.DataFrame,
+) -> None:
+    observation, prediction = split_temporal_windows(
+        temporal_transactions_df,
+        observation_start=0,
+        observation_end=1,
+        prediction_start=2,
+        prediction_end=3,
+    )
+
+    assert observation["TIMESTAMP"].max() == 1
+    assert prediction["TIMESTAMP"].min() == 2
+    assert set(observation["TX_ID"]).isdisjoint(prediction["TX_ID"])
+
+
+def test_future_target_uses_only_future_fraud() -> None:
+    prediction = pd.DataFrame(
+        {
+            "TX_ID": [1, 2, 3],
+            "SENDER_ACCOUNT_ID": [1, 1, 2],
+            "IS_FRAUD": [0, 1, 0],
+        }
+    )
+
+    target = build_future_target(prediction).set_index("ACCOUNT_ID")
+
+    assert target.loc[1, "TARGET"] == 1
+    assert target.loc[2, "TARGET"] == 0
+
+
+def test_temporal_dataset_is_finite_and_has_future_target(
+    temporal_transactions_df: pd.DataFrame,
+) -> None:
+    result = build_temporal_account_dataset(
+        temporal_transactions_df,
+        observation_start=0,
+        observation_end=1,
+        prediction_start=2,
+        prediction_end=3,
+        recent_windows=[1],
+        min_history_transactions=2,
+    )
+
+    assert set(result["ACCOUNT_ID"]) == {1, 2}
+    assert result.set_index("ACCOUNT_ID").loc[1, "TARGET"] == 1
+    numeric = result.drop(columns=["ACCOUNT_ID"])
+    assert np.isfinite(numeric.to_numpy()).all()
