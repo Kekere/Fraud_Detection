@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 
@@ -15,6 +16,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 from src.predict import predict_account  # noqa: E402
+from src.config import TEMPORAL_DATASET_FILE  # noqa: E402
+from src.explain import explain_account  # noqa: E402
 
 
 st.set_page_config(
@@ -56,6 +59,13 @@ def get_risk_level(risk_score: float) -> tuple[str, str]:
     )
 
 
+@st.cache_data
+def load_account_features() -> pd.DataFrame:
+    """Charge les caractéristiques produites par le pipeline temporel."""
+
+    return pd.read_csv(TEMPORAL_DATASET_FILE)
+
+
 def main() -> None:
     st.title("Détection de comptes présentant un risque de fraude")
 
@@ -91,98 +101,30 @@ def main() -> None:
             """
             **Modèle**
 
-            XGBoost entraîné sur des caractéristiques transactionnelles
+            Extra Trees entraîné sur des caractéristiques transactionnelles
             agrégées par compte.
             """
         )
 
-        st.write(
-            """
-            **Limites**
 
-            - données utilisées à des fins de démonstration;
-            - seuils de risque non validés opérationnellement;
-            - prédictions dépendantes de la qualité des données;
-            - validation humaine obligatoire.
-            """
+    st.subheader("Sélection du compte")
+
+    try:
+        dataset = load_account_features()
+    except FileNotFoundError:
+        st.error(
+            "Le dataset de caractéristiques est introuvable. Exécutez "
+            "`python -m src.train` pour le générer."
         )
+        return
 
-    st.subheader("Caractéristiques du compte")
+    account_ids = dataset["ACCOUNT_ID"].tolist()
 
     with st.form("prediction_form"):
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            n_transactions = st.number_input(
-                "Nombre de transactions",
-                min_value=1,
-                value=25,
-                step=1,
-            )
-
-            total_amount = st.number_input(
-                "Montant total des transactions",
-                min_value=0.0,
-                value=75_000.0,
-                step=100.0,
-            )
-
-            avg_amount = st.number_input(
-                "Montant moyen",
-                min_value=0.0,
-                value=3_000.0,
-                step=100.0,
-            )
-
-        with col2:
-            median_amount = st.number_input(
-                "Montant médian",
-                min_value=0.0,
-                value=1_500.0,
-                step=100.0,
-            )
-
-            std_amount = st.number_input(
-                "Écart-type des montants",
-                min_value=0.0,
-                value=4_200.0,
-                step=100.0,
-                help=(
-                    "Mesure la variation des montants des transactions "
-                    "autour de leur moyenne."
-                ),
-            )
-
-            min_amount = st.number_input(
-                "Montant minimal",
-                min_value=0.0,
-                value=25.0,
-                step=10.0,
-            )
-
-        with col3:
-            max_amount = st.number_input(
-                "Montant maximal",
-                min_value=0.0,
-                value=25_000.0,
-                step=100.0,
-            )
-
-            n_counterparties = st.number_input(
-                "Nombre de contreparties distinctes",
-                min_value=1,
-                value=7,
-                step=1,
-            )
-
-            avg_time_between_tx = st.number_input(
-                "Temps moyen entre transactions, en secondes",
-                min_value=0.0,
-                value=1_800.0,
-                step=60.0,
-                help="1 800 secondes correspondent à 30 minutes.",
-            )
-
+        selected_account_id = st.selectbox(
+            "Identifiant du compte",
+            options=account_ids,
+        )
         submitted = st.form_submit_button(
             "Analyser le compte",
             use_container_width=True,
@@ -191,17 +133,13 @@ def main() -> None:
     if not submitted:
         return
 
-    account_data = {
-        "n_transactions": int(n_transactions),
-        "total_amount": float(total_amount),
-        "avg_amount": float(avg_amount),
-        "median_amount": float(median_amount),
-        "std_amount": float(std_amount),
-        "min_amount": float(min_amount),
-        "max_amount": float(max_amount),
-        "n_counterparties": int(n_counterparties),
-        "avg_time_between_tx": float(avg_time_between_tx),
-    }
+    account_row = dataset.loc[
+        dataset["ACCOUNT_ID"] == selected_account_id
+    ].iloc[0]
+    account_data = account_row.drop(
+        labels=["ACCOUNT_ID", "TARGET"],
+        errors="ignore",
+    ).to_dict()
 
     try:
         result = predict_account(account_data)
@@ -215,7 +153,7 @@ def main() -> None:
         )
         return
 
-    except KeyError as error:
+    except (KeyError, ValueError) as error:
         st.error(
             f"Une caractéristique attendue par le modèle est absente : {error}"
         )
@@ -224,6 +162,12 @@ def main() -> None:
     except Exception as error:
         st.exception(error)
         return
+
+    try:
+        explanation = explain_account(account_data)
+    except Exception as error:
+        explanation = None
+        explanation_error = error
 
     prediction = result["prediction"]
     risk_score = float(result["risk_score"])
@@ -270,6 +214,55 @@ def main() -> None:
     else:
         st.success(recommendation)
 
+    st.subheader("Explicabilité de la prédiction")
+
+    if explanation is None:
+        st.warning(
+            "La prédiction a réussi, mais son explication n'a pas pu "
+            f"être générée : {explanation_error}"
+        )
+    else:
+        contributions = explanation["contributions"].head(10).copy()
+        contributions["direction"] = contributions["shap_value"].apply(
+            lambda value: (
+                "Augmente le risque"
+                if value > 0
+                else "Réduit le risque"
+            )
+        )
+
+        st.caption(
+            "Une contribution SHAP positive pousse la prédiction vers "
+            "la classe fraude; une contribution négative l'en éloigne."
+        )
+
+        chart_data = contributions.set_index("feature")[["shap_value"]]
+        st.bar_chart(
+            chart_data,
+            horizontal=True,
+            use_container_width=True,
+        )
+
+        st.dataframe(
+            contributions[
+                [
+                    "feature",
+                    "value",
+                    "shap_value",
+                    "direction",
+                ]
+            ].rename(
+                columns={
+                    "feature": "Variable",
+                    "value": "Valeur",
+                    "shap_value": "Contribution SHAP",
+                    "direction": "Effet",
+                }
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
+
     st.subheader("Résumé des données analysées")
 
     summary_col1, summary_col2 = st.columns(2)
@@ -277,22 +270,36 @@ def main() -> None:
     with summary_col1:
         st.write(
             {
-                "Nombre de transactions": int(n_transactions),
-                "Montant total": format_currency(total_amount),
-                "Montant moyen": format_currency(avg_amount),
-                "Montant médian": format_currency(median_amount),
-                "Écart-type": format_currency(std_amount),
+                "Identifiant": selected_account_id,
+                "Nombre de transactions": int(
+                    account_data["n_transactions"]
+                ),
+                "Montant total sortant": format_currency(
+                    account_data["total_outgoing_amount"]
+                ),
+                "Montant moyen sortant": format_currency(
+                    account_data["avg_outgoing_amount"]
+                ),
+                "Contreparties": int(
+                    account_data["n_counterparties"]
+                ),
             }
         )
 
     with summary_col2:
         st.write(
             {
-                "Montant minimal": format_currency(min_amount),
-                "Montant maximal": format_currency(max_amount),
-                "Contreparties distinctes": int(n_counterparties),
+                "Transactions entrantes": int(
+                    account_data["n_incoming_transactions"]
+                ),
+                "Montant total entrant": format_currency(
+                    account_data["total_incoming_amount"]
+                ),
+                "Degré total du réseau": int(
+                    account_data["total_degree"]
+                ),
                 "Temps moyen entre transactions": (
-                    f"{avg_time_between_tx:,.0f} secondes"
+                    f"{account_data['avg_steps_between_tx']:,.1f} étapes"
                 ),
             }
         )

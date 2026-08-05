@@ -3,7 +3,7 @@ from __future__ import annotations
 import joblib
 import pandas as pd
 import shap
-
+import matplotlib.pyplot as plt
 from src.config import (
     METADATA_FILE,
     MODEL_FILE,
@@ -115,3 +115,48 @@ def explain_account(data: dict) -> dict:
         "contributions": contributions,
         "shap_explanation": shap_explanation,
     }
+if __name__ == "__main__":
+    from src.config import TEMPORAL_DATASET_FILE
+
+    dataset = pd.read_csv(TEMPORAL_DATASET_FILE)
+
+    model, metadata = load_artifacts()
+    expected_features = metadata["features"]
+
+    example_row = dataset.iloc[0]
+
+    account_data = {
+        feature: example_row[feature]
+        for feature in expected_features
+    }
+
+    result = explain_account(account_data)
+
+    print("Account ID:", example_row["ACCOUNT_ID"])
+    print("Actual target:", int(example_row["TARGET"]))
+    print("Prediction:", result["prediction"])
+    print("Risk score:", result["risk_score"])
+    print(
+        "Decision threshold:",
+        result["decision_threshold"],
+    )
+
+    print("\nTop contributing features:")
+    print(
+        result["contributions"][
+            [
+                "feature",
+                "value",
+                "shap_value",
+            ]
+        ].head(10)
+    )
+
+    shap.plots.waterfall(
+        result["shap_explanation"],
+        max_display=12,
+        show=False,
+    )
+
+    plt.tight_layout()
+    plt.show()
