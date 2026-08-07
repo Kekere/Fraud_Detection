@@ -1,0 +1,11 @@
+joblib
+numpy
+pandas
+pytest
+pytest-cov
+scikit-learn
+shap
+streamlit
+xgboost
+matplotlib
+pytest-cov
