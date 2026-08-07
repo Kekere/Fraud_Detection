@@ -4,3 +4,4 @@ data/*
 models/*
 !models/.gitkeep
 .venv/*
+.pytest_runtime*/
