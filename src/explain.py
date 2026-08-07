@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import joblib
+import matplotlib.pyplot as plt
 import pandas as pd
 import shap
-import matplotlib.pyplot as plt
+
 from src.config import (
     METADATA_FILE,
     MODEL_FILE,

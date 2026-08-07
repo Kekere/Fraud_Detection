@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import joblib
 import pandas as pd
-
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import (
@@ -13,8 +12,8 @@ from sklearn.ensemble import (
     HistGradientBoostingClassifier,
     RandomForestClassifier,
 )
-from sklearn.linear_model import LogisticRegression
 from sklearn.inspection import permutation_importance
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     classification_report,
@@ -479,7 +478,7 @@ def train() -> None:
     )
 
     metadata = {
-        "training_date": datetime.now().isoformat(),
+        "training_date": datetime.now(timezone.utc).isoformat(),
         "algorithm": str(leaderboard.iloc[0]["model"]),
         "features": list(X.columns),
         "target": "TARGET",

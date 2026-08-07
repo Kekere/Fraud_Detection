@@ -6,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-
 # Permet d'importer le package src lorsque Streamlit est lancé
 # depuis la racine du projet.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -15,10 +14,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from src.predict import predict_account  # noqa: E402
-from src.config import TEMPORAL_DATASET_FILE  # noqa: E402
-from src.explain import explain_account  # noqa: E402
-
+from src.config import TEMPORAL_DATASET_FILE
+from src.explain import explain_account
+from src.predict import predict_account
 
 st.set_page_config(
     page_title="Détection de comptes à risque",
@@ -159,13 +157,19 @@ def main() -> None:
         )
         return
 
-    except Exception as error:
+    except (OSError, TypeError, AttributeError, IndexError) as error:
         st.exception(error)
         return
 
     try:
         explanation = explain_account(account_data)
-    except Exception as error:
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        AttributeError,
+        IndexError,
+    ) as error:
         explanation = None
         explanation_error = error
 
