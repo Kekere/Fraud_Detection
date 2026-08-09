@@ -1,0 +1,14 @@
+.venv
+.git
+.github
+**pycache**
+*.pyc
+.pytest*
+.ruff_cache
+.coverage
+htmlcov
+mlruns
+mlflow.db
+data/*
+!data/account_temporal_dataset.csv
+tests
