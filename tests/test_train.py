@@ -87,7 +87,7 @@ def test_train_writes_model_metadata_and_temporal_dataset(
         tmp_path / "models" / "metadata.pkl",
     )
 
-    train_module.train()
+    train_module.train(enable_mlflow=False)
 
     assert (tmp_path / "data" / "temporal.csv").exists()
     assert len(dumped) == 2
@@ -114,4 +114,4 @@ def test_train_rejects_single_class_target(monkeypatch, tmp_path) -> None:
     )
 
     with pytest.raises(ValueError, match="une seule classe"):
-        train_module.train()
+        train_module.train(enable_mlflow=False)

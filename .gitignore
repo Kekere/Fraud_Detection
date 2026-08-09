@@ -5,3 +5,4 @@ models/*
 !models/.gitkeep
 .venv/*
 .pytest_runtime*/
+.pytest_cache/

@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import joblib
+import mlflow
+import mlflow.sklearn
 import pandas as pd
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
@@ -284,7 +286,7 @@ def fit_best_model(
     )
 
 
-def train() -> None:
+def train(*, enable_mlflow: bool = True) -> None:
     transactions = load_transactions(
         TRANSACTIONS_FILE
     )
@@ -537,6 +539,91 @@ def train() -> None:
     print(
         feature_importance.head(25)
     )
+
+    if enable_mlflow:
+        mlflow.set_experiment("fraud_detection")
+
+        with mlflow.start_run(
+            run_name=f"{metadata['algorithm']}_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}"
+        ):
+            mlflow.log_params(
+                {
+                    "algorithm": metadata["algorithm"],
+                    "decision_threshold": decision_threshold,
+                    "observation_start": OBSERVATION_START,
+                    "observation_end": OBSERVATION_END,
+                    "prediction_start": PREDICTION_START,
+                    "prediction_end": PREDICTION_END,
+                    "recent_windows": ",".join(map(str, RECENT_WINDOWS)),
+                    "high_amount_quantile": HIGH_AMOUNT_QUANTILE,
+                    "min_history_transactions": MIN_HISTORY_TRANSACTIONS,
+                    "feature_count": len(X.columns),
+                    "random_state": 42,
+                }
+            )
+
+            mlflow.log_metrics(
+                {
+                    "test_roc_auc": roc_auc,
+                    "test_average_precision": average_precision,
+                    "test_precision": precision_score(
+                        y_test,
+                        test_predictions,
+                        zero_division=0,
+                    ),
+                    "test_recall": recall_score(
+                        y_test,
+                        test_predictions,
+                        zero_division=0,
+                    ),
+                    "test_f1": f1_score(
+                        y_test,
+                        test_predictions,
+                        zero_division=0,
+                    ),
+                    "training_accounts": len(X_train),
+                    "development_accounts": len(X_development),
+                    "test_accounts": len(X_test),
+                    "positive_rate": float(y.mean()),
+                }
+            )
+
+            mlflow.log_table(
+                leaderboard,
+                "diagnostics/model_leaderboard.json",
+            )
+            mlflow.log_table(
+                threshold_table,
+                "diagnostics/threshold_comparison.json",
+            )
+            mlflow.log_table(
+                feature_importance,
+                "diagnostics/feature_importance.json",
+            )
+
+            mlflow.log_artifact(
+                str(TEMPORAL_DATASET_FILE),
+                artifact_path="data",
+            )
+            mlflow.log_artifact(
+                str(MODEL_FILE),
+                artifact_path="serialized",
+            )
+            mlflow.log_artifact(
+                str(METADATA_FILE),
+                artifact_path="serialized",
+            )
+            mlflow.sklearn.log_model(
+                model,
+                name="model",
+                # Floats keep the inferred MLflow schema compatible with
+                # missing values that may be represented as NaN at inference.
+                input_example=X_test.head(5).astype("float64"),
+                serialization_format=(
+                    mlflow.sklearn.SERIALIZATION_FORMAT_SKOPS
+                ),
+                pyfunc_predict_fn="predict_proba",
+            )
 
     print(
         f"\nModèle sauvegardé dans : "
