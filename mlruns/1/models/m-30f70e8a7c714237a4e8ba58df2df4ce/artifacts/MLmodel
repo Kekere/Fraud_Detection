@@ -1,0 +1,89 @@
+artifact_path: file:C:/Users/keren/Documents/Detection_Fraude/mlruns/1/models/m-30f70e8a7c714237a4e8ba58df2df4ce/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict_proba
+    python_version: 3.12.10
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.0
+    skops_trusted_types: null
+is_signature_from_type_hint: false
+mlflow_version: 3.15.1
+model_id: m-30f70e8a7c714237a4e8ba58df2df4ce
+model_size_bytes: 87417655
+model_uuid: m-30f70e8a7c714237a4e8ba58df2df4ce
+prompts: null
+run_id: 77e6a38b27844563892db343b4a5135e
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "n_transactions", "required": true}, {"type":
+    "double", "name": "total_outgoing_amount", "required": true}, {"type": "double",
+    "name": "avg_outgoing_amount", "required": true}, {"type": "double", "name": "median_outgoing_amount",
+    "required": true}, {"type": "double", "name": "std_outgoing_amount", "required":
+    true}, {"type": "double", "name": "min_outgoing_amount", "required": true}, {"type":
+    "double", "name": "max_outgoing_amount", "required": true}, {"type": "double",
+    "name": "n_counterparties", "required": true}, {"type": "double", "name": "n_transaction_types",
+    "required": true}, {"type": "double", "name": "n_active_steps", "required": true},
+    {"type": "double", "name": "avg_steps_between_tx", "required": true}, {"type":
+    "double", "name": "min_steps_between_tx", "required": true}, {"type": "double",
+    "name": "max_steps_between_tx", "required": true}, {"type": "double", "name":
+    "n_high_amount_transactions", "required": true}, {"type": "double", "name": "activity_duration_steps",
+    "required": true}, {"type": "double", "name": "transactions_per_active_step",
+    "required": true}, {"type": "double", "name": "counterparties_per_transaction",
+    "required": true}, {"type": "double", "name": "high_amount_transaction_ratio",
+    "required": true}, {"type": "double", "name": "amount_coefficient_of_variation",
+    "required": true}, {"type": "double", "name": "max_transactions_same_counterparty",
+    "required": true}, {"type": "double", "name": "top_counterparty_ratio", "required":
+    true}, {"type": "double", "name": "counterparty_entropy", "required": true}, {"type":
+    "double", "name": "outgoing_amount_entropy", "required": true}, {"type": "double",
+    "name": "tx_type_count_transfer", "required": true}, {"type": "double", "name":
+    "n_transactions_last_5_steps", "required": true}, {"type": "double", "name": "amount_last_5_steps",
+    "required": true}, {"type": "double", "name": "avg_amount_last_5_steps", "required":
+    true}, {"type": "double", "name": "max_amount_last_5_steps", "required": true},
+    {"type": "double", "name": "counterparties_last_5_steps", "required": true}, {"type":
+    "double", "name": "recent_tx_frequency_ratio_5", "required": true}, {"type": "double",
+    "name": "recent_amount_ratio_5", "required": true}, {"type": "double", "name":
+    "recent_avg_amount_change_5", "required": true}, {"type": "double", "name": "n_transactions_last_10_steps",
+    "required": true}, {"type": "double", "name": "amount_last_10_steps", "required":
+    true}, {"type": "double", "name": "avg_amount_last_10_steps", "required": true},
+    {"type": "double", "name": "max_amount_last_10_steps", "required": true}, {"type":
+    "double", "name": "counterparties_last_10_steps", "required": true}, {"type":
+    "double", "name": "recent_tx_frequency_ratio_10", "required": true}, {"type":
+    "double", "name": "recent_amount_ratio_10", "required": true}, {"type": "double",
+    "name": "recent_avg_amount_change_10", "required": true}, {"type": "double", "name":
+    "n_transactions_last_20_steps", "required": true}, {"type": "double", "name":
+    "amount_last_20_steps", "required": true}, {"type": "double", "name": "avg_amount_last_20_steps",
+    "required": true}, {"type": "double", "name": "max_amount_last_20_steps", "required":
+    true}, {"type": "double", "name": "counterparties_last_20_steps", "required":
+    true}, {"type": "double", "name": "recent_tx_frequency_ratio_20", "required":
+    true}, {"type": "double", "name": "recent_amount_ratio_20", "required": true},
+    {"type": "double", "name": "recent_avg_amount_change_20", "required": true}, {"type":
+    "double", "name": "n_incoming_transactions", "required": true}, {"type": "double",
+    "name": "total_incoming_amount", "required": true}, {"type": "double", "name":
+    "avg_incoming_amount", "required": true}, {"type": "double", "name": "max_incoming_amount",
+    "required": true}, {"type": "double", "name": "n_unique_senders", "required":
+    true}, {"type": "double", "name": "out_degree", "required": true}, {"type": "double",
+    "name": "in_degree", "required": true}, {"type": "double", "name": "total_degree",
+    "required": true}, {"type": "double", "name": "out_in_degree_ratio", "required":
+    true}, {"type": "double", "name": "new_counterparties_recent", "required": true},
+    {"type": "double", "name": "counterparties_recent", "required": true}, {"type":
+    "double", "name": "new_counterparty_ratio", "required": true}, {"type": "double",
+    "name": "incoming_outgoing_amount_ratio", "required": true}, {"type": "double",
+    "name": "incoming_outgoing_tx_ratio", "required": true}, {"type": "double", "name":
+    "net_transaction_flow", "required": true}, {"type": "double", "name": "absolute_net_flow",
+    "required": true}]'
+  outputs: '[{"type": "long", "required": true}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-08-07 03:54:42.944580'

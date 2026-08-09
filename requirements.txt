@@ -1,4 +1,6 @@
 joblib
+fastapi
+httpx2
 numpy
 pandas
 pytest
@@ -9,3 +11,7 @@ streamlit
 xgboost
 matplotlib
 pytest-cov
+ruff
+mlflow
+skops
+uvicorn[standard]
